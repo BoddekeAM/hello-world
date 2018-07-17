@@ -1,0 +1,161 @@
+QMP Absolute quantification project
+=====================================
+
+*Creator: Anne Boddeke* 
+*Year: 2018* 
+
+### To determine composition at different taxonomical levels
+## PER ANATOMICAL GROUP (Ileal vs Colonic)
+
+1. Get ready
+-----------------------------------------------
+```
+# Intstall and open needed packages
+library("psych") # Warning message about versions of R
+library("reshape2") 
+library("ggplot2")
+
+## Read table of desired taxonomical level
+# For example: Phylum level
+phylum_table <- read.table("p_table.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+# Transpose table, samples IDs as colnames
+t_phylum_table <- as.data.frame(t(phylum_table))
+
+## Read table with data on anatomical groups
+anatomical_groups <- read.table("IBD_sample_info_subset.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+# Remove unnecessary info
+anatomical_groups$Diagnosis_Current=NULL
+anatomical_groups$Current_Stoma=NULL
+anatomical_groups$Current_Stoma_Type=NULL
+
+## Combine the taxonomical table and anatomical table
+phylum_groups <- merge(phylum_table, anatomical_groups, by = "row.names")
+# Arrange rownames so IDs are rownames instead of first column
+rownames(phylum_groups) <- phylum_groups[,1]
+phylum_groups <- phylum_groups[,-1]
+
+### So now we have a table with the phyla coupled to the anatomical groups
+### Sample IDs as rows, phyla as columns
+```
+
+2. Subset
+-----------------------------------------------
+```
+##### Subset the table by categories and make new tables with the mean abundance per anatomical group 
+#### I will work with two categories: 1. Ileal; 2. Colonic
+### 1. Ileal
+## Make a table with just the ileal samples (aka ileostoma patient samples) 
+ileal_phylum <- subset(phylum_groups, phylum_groups$Group=="ileal")
+ # Remove the column with the group behind it
+ileal_phylum$Group=NULL
+### Make a table with the four most common phyla and the other phyla as 'other'
+ ## Calculate the mean abundance per phylum
+ mean_ileal_phylum <- describe(ileal_phylum)
+ ## Find the four most abundant phyla
+ top4_ileal_phylum <- mean_ileal_phylum [order(mean_ileal_phylum$mean, decreasing = T)[1:4],]
+ ## Sum the means of the top 4
+ sum_top4_ileal_phylum <- sum(top4_ileal_phylum$mean)
+ ## Create a category for the other (non-top-four) means
+ others_ileal_phylum <- (100 - sum_top4_ileal_phylum)
+  # Create one table with both the top four and the 'others' category 
+  ileal_phylum_results <- subset(top4_ileal_phylum, select = "mean")
+   # Give the new table as column name the anatomical region and the taxonomical level
+   colnames(ileal_phylum_results) <- "Ileal"
+  # Combine the top four and 'others'
+  ileal_phylum_results <- rbind(ileal_phylum_results, others_ileal_phylum)
+   # Give the fifth row the name 'others'
+   rownames(ileal_phylum_results) [5] <- "others"
+## Now the table 'ileal_phylum_results' contains the four most abundant phyla and one category 'others'
+## The table has the phyla as rows and one column tating it is of the anatomical group 'Ileal' 
+
+### 2. Colonic 
+## Repeat the exact same steps as for the previous category
+# For notes explaining the steps, see '1. Ileal'
+colonic_phylum <- subset(phylum_groups, phylum_groups$Group=="colonic")
+colonic_phylum$Group=NULL
+mean_colonic_phylum <- describe(colonic_phylum)
+top4_colonic_phylum <- mean_colonic_phylum [order(mean_colonic_phylum$mean, decreasing = T)[1:4],]
+sum_top4_colonic_phylum <- sum(top4_colonic_phylum$mean)
+others_colonic_phylum <- (100 - sum_top4_colonic_phylum)
+colonic_phylum_results <- subset(top4_colonic_phylum, select = "mean")
+colnames(colonic_phylum_results) <- "Colonic"
+colonic_phylum_results <- rbind(colonic_phylum_results, others_colonic_phylum)
+rownames(colonic_phylum_results) [5] <- "others"
+## Now the table 'colonic_phylum_results' contains the four most abundant phyla and one category 'others'
+## The table has the phyla as rows and one column tating it is of the anatomical group 'Colonic'
+```
+
+3. Make one final table
+-----------------------------------------------
+```
+### Make one table that contains the composition of both anatomical categories
+## all = T makes sure that during merging no phyla are lost
+phylum_composition_groups <- merge(ileal_phylum_results, colonic_phylum_results, by = "row.names", all = T)
+## Organise row names 
+rownames(phylum_composition_groups) <- phylum_composition_groups[,1]
+phylum_composition_groups <- phylum_composition_groups[,-1]
+
+### Write a .txt table WITH CORRECT TAXONOMICAL LEVEL IN NAME
+write.table(phylum_composition_groups, file = "~/Desktop/Thesis/phylum_composition_groups.txt", sep = "\t", quote = F)
+```
+
+4. Adjust table for making plots
+-----------------------------------------------
+```
+### Read table with composition per anatomical group for a certain taxonomical level
+## For example phylum level
+phylum_composition_groups <- read.table("phylum_composition_groups.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+
+## Adjust the table for making a stacked barplot
+# Create an extra column for the bacteria names
+phylum_composition_groups$bacteria=row.names(phylum_composition_groups)
+# Remove the row names (since bacteria names are in separate column now)
+row.names(phylum_composition_groups)=NULL
+# Make a new table that puts the two groups in one column
+my_table = melt(phylum_composition_groups)
+```
+
+5. Make stacked barplot
+-----------------------------------------------
+```
+### Make a stacked barplot ###
+phylum_barplot <- ggplot (my_table, aes(x=variable, y=value)) + geom_bar (aes(fill = bacteria), stat = "identity") + theme_classic() + xlab("Group") + ylab("Relative abundance") + theme(legend.text=element_text(size=15)) + theme(axis.text=element_text(size=15), axis.title=element_text(size=15,face="bold"))
+# Have a look!
+print(phylum_barplot)
+# Warning message that two rows containing missing values were removed: this is because the top four contained different phyla for the two groups. Ignore
+# Improve Legend:
+phylum_barplot_final <- phylum_barplot + scale_fill_discrete(name="Bacteria", labels=c("Others", "Actinobacteria", "Bacteroidetes", "Euryarchaeota", "Firmicutes", "Proteobacteria")) + theme(legend.title = element_text(size=16, face="bold")) + ggtitle("Phylum composition by location") + theme(plot.title = element_text(size=20, face="bold"))
+# Export as jpeg (or pdf, or whatever you like) MAKE SURE TO CHANGE THE FILE NAME
+jpeg(filename = "Pyhlum composition by location.jpg")
+print(phylum_barplot_final)
+dev.off()
+
+#### You can repeat above steps for any preferred taxonomical leven. 
+#### !! Be sure to go through 'Script 3 Composition analysis' first 
+ ### !! so you have your table in the right form and coupled to your groups!
+```
+
+6. Extra: the general code for making a stacked barplot
+-----------------------------------------------
+```
+#### General code for stacked barplots as explained above ####
+## Note: everywhere were it says 'level', you should/can enter the taxonomical level you're working with ##
+ # Note: you start with a taxonomical level composition table which is already coupled to your anatomical locations, see Script 3 #
+
+setwd("Desktop/Thesis")
+library("reshape2") 
+library("ggplot2")
+
+level_composition_groups <- read.table("level_composition_groups.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+level_composition_groups$bacteria=row.names(level_composition_groups)
+row.names(level_composition_groups)=NULL
+my_table = melt(level_composition_groups)
+level_barplot <- ggplot (my_table, aes(x=variable, y=value)) + geom_bar (aes(fill = bacteria), stat = "identity") + theme_classic() + xlab("Group") + ylab("Relative abundance") + theme(legend.text=element_text(size=15)) + theme(axis.text=element_text(size=15), axis.title=element_text(size=15,face="bold"))
+print(level_barplot)
+level_barplot_final <- level_barplot + scale_fill_discrete(name="Bacteria", labels=c("Others", "Actinobacteria", "Bacteroidetes", "Euryarchaeota", "Firmicutes", "Proteobacteria")) + theme(legend.title = element_text(size=16, face="bold")) + ggtitle("Level composition by location") + theme(plot.title = element_text(size=20, face="bold"))
+print(level_barplot_final)
+# Export as jpeg (or pdf, or whatever you like) MAKE SURE TO CHANGE THE FILE NAME
+jpeg(filename = "Level composition by location.jpg")
+print(level_barplot_final)
+dev.off()
+```
