@@ -135,7 +135,72 @@ dev.off()
  ### !! so you have your table in the right form and coupled to your groups!
 ```
 
-6. Extra: the general code for making a stacked barplot
+6. Statistics on compositions
+-----------------------------------------------
+```
+
+##### Statistics on Relative Abundance PHYLA #####
+## Read taxological leven table, e.g. phylum
+phylum_table <- read.table("p_table.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+### Of course this can be performed for more levels
+### Below, we will analyse a selection of phylum groups; more groups can be analysed ofcourse 
+# Actinobacteria
+name_column <- "p__Actinobacteria"
+actinobacteria <- subset(phylum_table, select = name_column)
+actinobacteria <- merge(actinobacteria, anatomical_groups, by = "row.names")
+rownames(actinobacteria) <- actinobacteria[,1]
+actinobacteria <- actinobacteria[,-1]
+colnames(actinobacteria)[1] <- "rel_abun"
+
+in_test <- wilcox.test(rel_abun ~ Group,  data = actinobacteria, paired = FALSE) 
+in_test 
+
+# Bacteroidetes
+name_column <- "p__Bacteroidetes"
+bacteroidetes <- subset(phylum_table, select = name_column)
+bacteroidetes <- merge(bacteroidetes, anatomical_groups, by = "row.names")
+rownames(bacteroidetes) <- bacteroidetes[,1]
+bacteroidetes <- bacteroidetes[,-1]
+colnames(bacteroidetes)[1] <- "rel_abun"
+
+in_test <- wilcox.test(rel_abun ~ Group,  data = bacteroidetes, paired = FALSE) 
+in_test
+
+#Euryarchaeota
+name_column <- "p__Euryarchaeota"
+euryarchaeota <- subset(phylum_table, select = name_column)
+euryarchaeota <- merge(euryarchaeota, anatomical_groups, by = "row.names")
+rownames(euryarchaeota) <- euryarchaeota[,1]
+euryarchaeota <- euryarchaeota[,-1]   
+colnames(euryarchaeota)[1] <- "rel_abun"
+
+in_test <- wilcox.test(rel_abun ~ Group,  data = euryarchaeota, paired = FALSE) 
+in_test
+
+#Firmicutes
+name_column <- "p__Firmicutes"
+firmicutes <- subset(phylum_table, select = name_column)
+firmicutes <- merge(firmicutes, anatomical_groups, by = "row.names")
+rownames(firmicutes) <- firmicutes[,1]
+firmicutes <- firmicutes[,-1]   
+colnames(firmicutes)[1] <- "rel_abun"
+
+in_test <- wilcox.test(rel_abun ~ Group,  data = firmicutes, paired = FALSE) 
+in_test
+
+#Proteobacteria
+name_column <- "p__Proteobacteria"
+proteobacteria <- subset(phylum_table, select = name_column)
+proteobacteria <- merge(proteobacteria, anatomical_groups, by = "row.names")
+rownames(proteobacteria) <- proteobacteria[,1]
+proteobacteria <- proteobacteria[,-1]
+colnames(proteobacteria)[1] <- "rel_abun" 
+
+in_test <- wilcox.test(rel_abun ~ Group,  data = proteobacteria, paired = FALSE) 
+in_test
+```
+
+7. Extra: the general code for making a stacked barplot
 -----------------------------------------------
 ```
 #### General code for stacked barplots as explained above ####
