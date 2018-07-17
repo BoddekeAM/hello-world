@@ -1,0 +1,143 @@
+QMP Absolute quantification project
+=====================================
+
+*Creator: Anne Boddeke* 
+*Year: 2018* 
+
+This script goes into the preparation of different data layers:
+A. Relative abundances from sequencing
+B. FISH counts
+C. Estimated reads
+D. Sequencing depth
+
+
+A. Relative abundances
+=====================================
+
+1. Read table 
+-----------------------------------------------
+```
+# Read table
+FISH_seq_samples_all <- read.table("metaphlanmerged.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+```
+
+2. Correct and simplify data and IDs
+-----------------------------------------------
+```
+#### Correct and simplify IDs
+### Remove "_metaphlan"
+colnames(FISH_seq_samples) <- gsub("_metaphlan", "", colnames(FISH_seq_samples))
+### Rename p001_M1 IDs to P1_M1 IDs
+## Substitute "p00" for "P0" and "p0" for "P" (as some have a name with "p0") 
+colnames(FISH_seq_samples) <- gsub("p00", "P0", colnames(FISH_seq_samples))
+colnames(FISH_seq_samples) <- gsub("p0", "P", colnames(FISH_seq_samples))
+#### Names are correct now ####
+```
+
+3. Make tables per taxonomical level
+-----------------------------------------------
+```
+# Transpose table
+FISH_seq_samples_all <- t(FISH_seq_samples)
+
+# Run the script on making taxonomical tables
+```
+
+
+B. FISH counts
+=====================================
+
+# NOTE: FISH counts of P39 M1 are mislabelled under M2; hence take M2 data of P39
+# NOTE: P11 and P20 don't have values for M4
+# NOTE: When using an Excel file, make sue values are 'Values' not 'Scientific notation'
+
+1. Read table
+-----------------------------------------------
+```
+# Read table with absolute FISH counts of E.coli and F.prau at M1 and M4
+FISH_counts_all <- read.table("Ecoli_Fprau_Absolute_M1M4.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+
+# Other data preparation was done in Excel
+```
+
+C. Estimated reads
+=====================================
+
+1. Read table and correct IDs 
+-----------------------------------------------
+```
+# Read table with estimated reads at M1 and M4
+e_reads <- read.table("estimated_reads_metaphlan.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+#### Correct and simplify IDs
+### Remove "_metaphlan"
+colnames(e_reads) <- gsub("_metaphlan", "", colnames(e_reads))
+### Rename p001_M1 IDs to P1_M1 IDs
+## Substitute "p00" for "P0" and "p0" for "P" (as some have a name with "p0") 
+colnames(e_reads) <- gsub("p00", "P0", colnames(e_reads))
+colnames(e_reads) <- gsub("p0", "P", colnames(e_reads))
+#### Names are correct now ####
+```
+
+2. Make tables for taxonomical levels
+-----------------------------------------------
+```
+##### Make a species table
+# Transpose table
+e_reads_all <- t(e_reads)
+
+# Run the script on making taxonomical tables
+```
+
+
+D. Sequencing Depth
+=====================================
+
+1. Read table 
+-----------------------------------------------
+```
+##### Read in sequencing depth data #####
+seq_depth_1 <- read.table("QR_Riboflavin.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+### I cheated a bit, as I got a .csv file which I exported to Excel
+  # Then I deleted some columns ("PDO Number", "Product", "# Lanes in Aggregation")
+  # Also I changed column names so they did'n contain spaces anymore (replace " " for "_")
+  # The current read in table contains many many useless columns, so:
+# Select only the columns with data in them:
+seq_depth <- seq_depth_1[,1:4]
+```
+
+2. Improve layout and IDs of table
+-----------------------------------------------
+```
+# Make Samples the rownames
+rownames(seq_depth) = seq_depth$Sample
+# Remove the column where the Samples were and the individual ID column
+seq_depth$Sample=NULL
+seq_depth$Individual_ID=NULL
+# Replace commas
+seq_depth$Total_Reads = gsub(",", "", seq_depth$Total_Reads)
+seq_depth$Total_Reads = as.numeric(seq_depth$Total_Reads)
+seq_depth$PF_Reads = gsub(",", "", seq_depth$PF_Reads)
+seq_depth$PF_Reads = as.numeric(seq_depth$PF_Reads)
+
+# Temporarily transform the dataset for selection of samples
+t_seq_depth <- t(seq_depth)
+t_seq_depth_df <- as.data.frame(t_seq_depth)
+### Remove data of M4 samples
+library(dplyr)
+t_seq_final <- select(t_seq_depth_df, ends_with("_M1"))
+### Rename p001_M1 IDs to P1 IDs
+## Remove "_M1"
+colnames(t_seq_final) <- gsub("_M1", "", colnames(t_seq_final))
+## Substitute "p00" for "P0" and "p0" for "P" (as some have a name with "p0") 
+colnames(t_seq_final) <- gsub("p00", "P0", colnames(t_seq_final))
+colnames(t_seq_final) <- gsub("p0", "P", colnames(t_seq_final))
+# Remove column of "P37" (as we don't have counts of this sample)
+t_seq_final$P37=NULL
+# Transform back!!!
+seq_depth_sub <- as.data.frame(t(t_seq_final))
+# Select only the total reads
+seq_depth_sub$PF_Reads=NULL
+
+# To easily use it next times, make a txt file with just the total reads per individual
+write.table(seq_depth_sub, "~/Desktop/Thesis/seq_depth.txt", sep="\t")
+```
