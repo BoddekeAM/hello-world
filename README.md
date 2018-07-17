@@ -1,5 +1,4 @@
-# hello-world
-Practice Repository
+# Scientific Internship Microbiome Quantification
+R Scripts 
 
-First try at using GitHub.
-So far so good!
+This folder contains the scripts made and used for my internship on quantitative microbiome profiling. 
