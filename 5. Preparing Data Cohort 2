@@ -141,3 +141,7 @@ seq_depth_sub$PF_Reads=NULL
 # To easily use it next times, make a txt file with just the total reads per individual
 write.table(seq_depth_sub, "~/Desktop/Thesis/seq_depth.txt", sep="\t")
 ```
+
+
+
+NOTE: Diversity and Composition can be calculated similarly to scripts published in this folder
