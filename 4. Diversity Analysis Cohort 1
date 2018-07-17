@@ -1,0 +1,89 @@
+QMP Absolute quantification project
+=====================================
+
+*Creator: Anne Boddeke* 
+*Year: 2018* 
+
+1. Read table 
+-----------------------------------------------
+```
+library(vegan)
+library(ggplot2)
+library(dplyr)
+library(FSA)
+
+# Read in level table, for now we'll use species
+# Not yet coupled to anatomical groups
+species_table <- read.table("s_table.txt", sep = "\t", header = T, row.names = 1, check.names = F)
+```
+
+2. Calculate alpha diversity 
+-----------------------------------------------
+```
+# Transpose the table for the diversity function
+t_species_table <- as.data.frame(t(species_table))
+# Perform diversity function, gives Shannon index values
+alpha <- as.data.frame(diversity(species_table,index="shannon"))
+# Write a .txt file of this table
+write.table(alpha, file = "~/Desktop/Thesis/Alpha_Shannon_Species.txt", quote = F, sep = "\t")
+```
+
+3. Combine alpha diversity with anatomical location
+-----------------------------------------------
+```
+# Read the table with anatomical locations 
+anatomical_groups <- read.table("IBD_sample_info_subset.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+# Remove unnecessary info
+anatomical_groups$Diagnosis_Current=NULL
+anatomical_groups$Current_Stoma=NULL
+anatomical_groups$Current_Stoma_Type=NULL
+
+#Combine the alpha diversities and the anatomical locations
+group_alpha <- merge(anatomical_groups, alpha, by="row.names")
+rownames(group_alpha) <- group_alpha[,1]
+group_alpha_2 <- group_alpha[,-1]
+colnames(group_alpha_2)[2] <- "Diversity"
+```
+
+4. Visualize in violin plot
+-----------------------------------------------
+```
+library(ggsignif)
+# Make a violin plot
+violin_plot <- ggplot(group_alpha_2, aes(x=group_alpha_2$Group, y=group_alpha_2$Diversity, fill= group_alpha_2$Group)) + labs (y="Shannon Diversity Index", x="Group") + geom_violin(trim=FALSE) + geom_boxplot(width = 0.1) + scale_fill_manual(values=c("#55AFEB","red")) + theme_classic() + scale_x_discrete(limits=c("ileal", "colonic"), labels = c("Ileal", "Colonic")) + theme(legend.position="none") + theme(axis.text = element_text(size = 15), axis.title = element_text(size = 15)) + ggtitle("Shannon Diversity Index Species \n by Anatomical Location") + theme(plot.title = element_text(size=20, face="bold", hjust = 0.5)) + geom_signif(comparisons = list(c("ileal", "colonic")), map_signif_level = T, y_position = 4)    
+violin_plot
+### I made them blue and red, if you want grey back: "#979494" is the key
+# Export as jpeg MAKE SURE TO CHANGE THE FILE NAME
+jpeg(filename = "IBD Cohort Shannon Diversity Index Species by anatomical location 2.jpg")
+print(violin_plot)
+dev.off()
+```
+
+5. Perform statistics on diversities of the two groups
+-----------------------------------------------
+```
+## Read alpha diversity table, for now we'll use the one of species
+diversity_table <- read.table("Alpha_Shannon_Species.txt", sep = "\t", header = T, row.names = 1, check.names = F)
+## Read table with data on anatomical groups
+anatomical_groups <- read.table("IBD_sample_info_subset.txt", header = T, sep="\t", as.is=TRUE, row.names = 1)
+# Remove unnecessary info
+anatomical_groups$Diagnosis_Current=NULL
+anatomical_groups$Current_Stoma=NULL
+anatomical_groups$Current_Stoma_Type=NULL
+
+# Merge both tables for diversity per group and correct row-/colnames
+diversity_groups_table <- merge(diversity_table, anatomical_groups, by = "row.names")
+rownames(diversity_groups_table) <- diversity_groups_table[,1]
+diversity_groups_table <- diversity_groups_table[,-1]
+colnames(diversity_groups_table)[1] <- "alfa_diversity"
+
+# Specify the order of factor levels
+# Mutate data for a summary of diversity per group
+diversity_groups_table_1 <- mutate(diversity_groups_table, Group = factor(Group, levels = unique(Group)))
+summarize_diversity <- Summarize(alfa_diversity~Group, data = diversity_groups_table_1)
+summarize_diversity
+
+### Mann-Whitney-Wilcoxon ###
+m_w_w_test <- wilcox.test(alfa_diversity ~ Group,  data = diversity_groups_table_1, paired = FALSE) 
+m_w_w_test 
+```
